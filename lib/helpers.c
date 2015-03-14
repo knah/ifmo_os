@@ -24,3 +24,18 @@ ssize_t write_(int fd, const void* buf, size_t count) {
             return offset;
     }
 }
+
+ssize_t read_until(int fd, void *buf, size_t count, char delimiter) {
+    size_t offset = 0;
+    for(;;) {
+        ssize_t rr = read(fd, buf + offset, 1);
+        if(rr == -1)
+            return -1;
+        if(rr == 0)
+            return offset;
+        if(((char*) buf)[offset++] == delimiter)
+            return offset;
+        if(offset == count)
+            return count;
+    }
+}
