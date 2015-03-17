@@ -25,6 +25,22 @@ ssize_t write_(int fd, const void* buf, size_t count) {
     }
 }
 
+// Now there is something I want to say regarding this function
+// While reading in increments of one character IS bad and slow,
+// it seems to me a much better idea than to do it otherwise
+// as otherwise this function "returns buffer with zero to count
+// delimiters in it" and this seems like bad API design, not
+// to mention that there will be some leftover data we can't
+// force back into file descriptor, so that we can't use any other
+// reading functions on that file descriptor if we want any meaningful
+// results. Therefore, I decalre this task bad, and it's author
+// should feel bad. Or write tasks in a more sensible way.
+// Or something. This implementation also conforms to task description,
+// although is slow.
+// Some may propose alternate "solutions", like "ignore all of
+// reasons for bad API design above". It's not a solution.
+// Proper solution would be [pseudo]-object-oriented buffered
+// I/O which is clearly out of scope of this task.
 ssize_t read_until(int fd, void *buf, size_t count, char delimiter) {
     size_t offset = 0;
     for(;;) {

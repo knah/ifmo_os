@@ -5,7 +5,7 @@
 
 int main() {
 	char buf[BUF_SIZE];
-	while(1) {
+	while(1) { // see rant in helpers.c regarding read_until
 		ssize_t count = read_until(STDIN_FILENO, buf, BUF_SIZE, ' ');
 		if(count == -1)
 			return 1;
