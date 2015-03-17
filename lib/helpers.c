@@ -33,7 +33,7 @@ ssize_t write_(int fd, const void* buf, size_t count) {
 // to mention that there will be some leftover data we can't
 // force back into file descriptor, so that we can't use any other
 // reading functions on that file descriptor if we want any meaningful
-// results. Therefore, I decalre this task bad, and it's author
+// results. Therefore, I decalre this task bad, and its author
 // should feel bad. Or write tasks in a more sensible way.
 // Or something. This implementation also conforms to task description,
 // although is slow.
