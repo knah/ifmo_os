@@ -1,5 +1,7 @@
 #include "helpers.h"
 #include <unistd.h>
+#include <sys/wait.h>
+#include <stdlib.h>
 
 ssize_t read_(int fd, void* buf, size_t count) {
     size_t offset = 0;
@@ -53,5 +55,18 @@ ssize_t read_until(int fd, void *buf, size_t count, char delimiter) {
             return offset;
         if(offset == count)
             return count;
+    }
+}
+
+int spawn(const char* file, char* const argv[]) {
+    int pid = fork();
+    if(pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return status;
+    } else if(pid == 0) {
+        exit(execvp(file, argv));
+    } else {
+        return -1;
     }
 }
