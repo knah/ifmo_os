@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     for(;;) {
         int res = read_until(STDIN_FILENO, buf, BUFFER_SIZE - 1, '\n');
         if(res == -1) {
-            return -1;
+            return 1;
         }
         if(res == 0) {
             return 0;
@@ -22,9 +22,9 @@ int main(int argc, char* argv[]) {
         buf[res - hadNL] = 0;
         int res2 = spawn(path, argv);
         if(res2 == 0) {
-            if(hadNL)
-                buf[res - hadNL] = '\n';
-            write_(STDOUT_FILENO, buf, res);
+            buf[res - hadNL] = '\n';
+            if(write_(STDOUT_FILENO, buf, res + 1 - hadNL) < 0)
+                return 2;
         }
     }
 }
