@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define BUF_SIZE 4096 + 5
+#define BUF_SIZE 1275
 
 int main(int argc, char* argv[]) {
 	if(argc < 2) {
@@ -11,8 +11,9 @@ int main(int argc, char* argv[]) {
 	}
 	char buf[BUF_SIZE];
 	int argsize = strlen(argv[1]);
-	if(argsize > BUF_SIZE) {
-		write_(STDERR_FILENO, "Argument is too long\n", 20);
+	if(argsize >= BUF_SIZE) {
+		write_(STDERR_FILENO, "Argument is too long\n", 21);
+		return 4;
 	}
 	int offset = 0;
 	while(1) {
@@ -48,7 +49,6 @@ int main(int argc, char* argv[]) {
 				lastpos++;
 			}
 		}
-		
 		if(lastpos < count - argsize) {
 			if(write_(STDOUT_FILENO, buf + lastpos, count - argsize - lastpos) < 0)
 				return 2;
