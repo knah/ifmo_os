@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <stdlib.h>
+#include <fcntl.h>
 
 ssize_t read_(int fd, void* buf, size_t count) {
     size_t offset = 0;
@@ -65,7 +66,12 @@ int spawn(const char* file, char* const argv[]) {
         waitpid(pid, &status, 0);
         return status;
     } else if(pid == 0) {
-        close(STDOUT_FILENO);
+        /*int nullFd = open("/dev/null", O_WRONLY);
+        if(nullFd < 0)
+            return -2;
+        if(dup2(nullFd, STDOUT_FILENO) < 0)
+            return -3;
+        close(nullFd);*/ // soapy task descriptions are killing me
         exit(execvp(file, argv));
     } else {
         return -1;
