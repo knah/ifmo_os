@@ -65,6 +65,7 @@ int spawn(const char* file, char* const argv[]) {
         waitpid(pid, &status, 0);
         return status;
     } else if(pid == 0) {
+        close(STDOUT_FILENO);
         exit(execvp(file, argv));
     } else {
         return -1;
