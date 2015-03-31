@@ -1,20 +1,12 @@
-all: lib/libhelpers.so cat/cat revwords/revwords filter/filter
+SUBDIRS = lib cat filter revwords delwords bufcat
+.PHONY: all clean $(SUBDIRS)
 
-lib/libhelpers.so:
-	cd lib && make
+all: $(SUBDIRS)
 
-cat/cat:
-	cd cat && make
-
-revwords/revwords:
-	cd revwords && make
-	
-filter/filter:
-	cd filter && make
-
+$(SUBDIRS):
+	make -C $@
 
 clean:
-	cd cat && make clean
-	cd lib && make clean
-	cd revwords && make clean
-	cd filter && make clean
+	for sd in $(SUBDIRS); do \
+		make -C $$sd clean; \
+	done
