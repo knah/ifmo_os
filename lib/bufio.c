@@ -5,7 +5,7 @@
 #ifdef DEBUG
 #define DEBUG_ASSERT(cond) if(!(cond)) abort();
 #else
-#define DEBUG_ASSERT(cound)
+#define DEBUG_ASSERT(cond)
 #endif
 
 char *buf_get_data(buf_t *buf) {
@@ -70,4 +70,29 @@ ssize_t buf_flush(int fd, buf_t *buf, size_t required) {
     memmove(data, data + offset, buf->size - offset);
     buf->size -= offset;
     return offset;
+}
+
+ssize_t buf_getline(int fd, buf_t *buf, char sep, void *ebuf) {
+    ssize_t rd = buf_fill(fd, buf, buf->capacity);
+    if(rd < 0)
+        return rd;
+    char *data = buf_get_data(buf);
+    int spos = buf->size;
+    int mpos = buf->size;
+    for(int i = 0; i < buf->size; i++) {
+        if(data[i] == sep) {
+            spos = i;
+            mpos = i + 1;
+            break;
+        }
+    }
+    if(spos == 0 && buf->size > 0) {
+        memmove(data, data + 1, buf->size - 1);
+        buf->size--;
+        return buf_getline(fd, buf, sep, ebuf);
+    }
+    memcpy(ebuf, data, spos);
+    memmove(data, data + mpos, buf->size - mpos);
+    buf->size -= mpos;
+    return spos;
 }

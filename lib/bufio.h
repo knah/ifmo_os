@@ -16,4 +16,6 @@ size_t buf_size(buf_t *);
 ssize_t buf_fill(int fd, buf_t *buf, size_t required);
 ssize_t buf_flush(int fd, buf_t *buf, size_t required);
 
+ssize_t buf_getline(int fd, buf_t *buf, char linesep, void *ebuf);
+
 #endif

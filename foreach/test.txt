@@ -1,0 +1,8 @@
+/usr/bin
+/home
+/doesnotexist
+/doesnotexist2
+
+/empty
+/empty2
+/nonewline
