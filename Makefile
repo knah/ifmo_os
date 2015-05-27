@@ -1,4 +1,4 @@
-SUBDIRS = lib cat filter revwords delwords bufcat
+SUBDIRS = lib cat filter revwords delwords bufcat foreach
 .PHONY: all clean $(SUBDIRS)
 
 all: $(SUBDIRS)
