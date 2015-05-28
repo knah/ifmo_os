@@ -213,6 +213,7 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
                 dup2(pipes[i * 2 - 2], STDIN_FILENO);
             if(i < n - 1)
                 dup2(pipes[i * 2 + 1], STDOUT_FILENO);
+            sigprocmask(SIG_SETMASK, &orig_mask, 0);
             exec(args[i]);
             char errname[strlen(args[i][0][0]) + 150];
             int saved_errno = errno;

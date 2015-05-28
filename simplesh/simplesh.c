@@ -84,7 +84,9 @@ int main(int argc, char* argv[]) {
             }
         }
         
-        runpiped(eptrs, programs);
+        if(runpiped(eptrs, programs)) {
+            write_(STDOUT_FILENO, "Error in runpiped\n", 17);
+        }
         
         for(int i = 0; i < programs; i++) {
             free_execargs(eargs[i]);
