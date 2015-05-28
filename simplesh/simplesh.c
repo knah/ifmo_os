@@ -2,6 +2,7 @@
 #include <bufio.h>
 #include <string.h>
 #include <signal.h>
+#include <errno.h>
 
 #define BUFFER_SIZE 4096
 
@@ -9,16 +10,25 @@ char newline = '\n';
 char pipe_char = '|';
 char space = ' ';
 
+void print_newline(int);
+
+void print_newline(int sig) {
+    write_(STDOUT_FILENO, "\n", 1);
+    signal(SIGINT, print_newline);
+}
+
 int main(int argc, char* argv[]) {
     char buf[BUFFER_SIZE];
 
     buf_t *buffota = buf_new(BUFFER_SIZE);
-    signal(SIGINT, SIG_IGN);
+    signal(SIGINT, print_newline);
 
     for(;;) {
         write_(STDOUT_FILENO, "$", 1);
         ssize_t res = buf_getline(STDIN_FILENO, buffota, '\n', buf);
         if(res == -1) {
+            if(errno == EINTR)
+                continue;
             return 1;
         }
         if(res == 0) {

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <errno.h>
 
 #include<stdio.h>
 
@@ -146,12 +147,11 @@ void free_execargs(execargs_t args_e) {
 }
 
 int exec(execargs_t *args) {
-    int run = 1;
-//    while(run)
-//        usleep(100000);
     return execvp(**args, *args);
 }
 
+// Another crappy task definition rant:
+// 
 int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because c++ is required to make it thread-safe without writing infinite amounts of code
     int pipes[2*n - 2];
     for(size_t i = 1; i < n; i++) {
@@ -161,7 +161,7 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
                 close(pipes[j * 2 - 2]);
                 close(pipes[j * 2 - 1]);
             }
-            return -1;
+            return -2;
         }
     }
     
@@ -175,10 +175,12 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
     sigaddset(&mask, SIGCHLD);
     sigprocmask(SIG_BLOCK, &mask, &orig_mask);
     
+    int fork_failed = 0;
     for(size_t i = 0; i < n; i++) {
         int pid = fork();
         if(pid < 0) {
-            goto out_of_while; // kill all we have remaining
+            fork_failed = 1;
+            goto no_forks; // kill all we have remaining
         } else if(pid) {
             pids[i] = pid;
         } else {
@@ -186,15 +188,38 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
                 dup2(pipes[i * 2 - 2], STDIN_FILENO);
             if(i < n - 1)
                 dup2(pipes[i * 2 + 1], STDOUT_FILENO);
-            printf("EXEC FAILD LOL %d\n\n", exec(args[i]));
+            exec(args[i]);
+            char errname[strlen(args[i][0][0]) + 150];
+            int saved_errno = errno;
+            switch(errno) {
+                case EACCES:
+                    sprintf(errname, "Failed to run %s: access denied\n", args[i][0][0]);
+                    break;
+                case EIO:
+                    sprintf(errname, "Failed to run %s: I/O error\n", args[i][0][0]);
+                    break;
+                case ENOEXEC:
+                    sprintf(errname, "Failed to run %s: not executable\n", args[i][0][0]);
+                    break;
+                case ENOENT:
+                    sprintf(errname, "Failed to run %s: file not found\n", args[i][0][0]);
+                    break;
+                default:
+                    sprintf(errname, "Failed to run %s: errno=%d\n", args[i][0][0], saved_errno);
+            }
+            write_(STDERR_FILENO, errname, strlen(errname));
             exit(-1);
         }
     }
+    no_forks:
     
     for(size_t i = 1; i < n; i++) {
         close(pipes[i * 2 - 2]);
         close(pipes[i * 2 - 1]);
     }
+    
+    if(fork_failed)
+        goto out_of_while;
     
     siginfo_t info;
     int killed_procs = 0;
@@ -227,5 +252,5 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
     }
     
     sigprocmask(SIG_SETMASK, &orig_mask, 0); // restore original mask
-    return 1;
+    return -fork_failed;
 }
