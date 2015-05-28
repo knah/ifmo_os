@@ -73,7 +73,7 @@ ssize_t buf_flush(int fd, buf_t *buf, size_t required) {
 }
 
 ssize_t buf_getline(int fd, buf_t *buf, char sep, void *ebuf) {
-    ssize_t rd = buf_fill(fd, buf, buf->capacity);
+    ssize_t rd = buf_fill(fd, buf, buf->size + 1);
     if(rd < 0)
         return rd;
     char *data = buf_get_data(buf);

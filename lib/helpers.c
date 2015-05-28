@@ -8,16 +8,16 @@
 #include <fcntl.h>
 #include <signal.h>
 
-#ifdef USE_STRING_H
-#include<string.h>
-#else
-size_t strlen(char *str) {
+#include<stdio.h>
+
+#ifdef NO_STRING_H
+static size_t strlen(char *str) {
     char* i = str;
     while(*i) i++;
     return i - str;
 }
 
-void* memcpy(void *dst_v, void* src_v, size_t size) {
+static void* memcpy(void *dst_v, void* src_v, size_t size) {
     char *dst = (char*) dst_v;
     char *src = (char*) src_v;
     for(int i = 0; i < size; i++) {
@@ -26,13 +26,15 @@ void* memcpy(void *dst_v, void* src_v, size_t size) {
     return dst_v;
 }
 
-void* memset(void *dst_v, int val, size_t size) {
+static void* memset(void *dst_v, int val, size_t size) {
     char* dst = (char*) dst_v;
     while(size--) {
         dst[size] = (char) val;
     }
     return dst;
 }
+#else
+#include<string.h>
 #endif
 
 ssize_t read_(int fd, void* buf, size_t count) {
@@ -112,6 +114,7 @@ int spawn(const char* file, char* const argv[]) {
 execargs_t make_execargs(char **args) {
     size_t count = 0;
     for(char** i = args; *i; count++, i++) ;
+    count++;
     char ** rv = (char**) malloc(count * sizeof(void*));
     if(!rv)
         return rv;
@@ -137,44 +140,30 @@ execargs_t make_execargs(char **args) {
 
 void free_execargs(execargs_t args_e) {
     for(char** i = args_e; *i; i++) {
-        free(i);
+        free(*i);
     }
     free(args_e);
 }
 
 int exec(execargs_t *args) {
+    int run = 1;
+//    while(run)
+//        usleep(100000);
     return execvp(**args, *args);
-}
-
-static struct {
-    int* pipes;
-    size_t n;
-    pid_t *pids;
-    int signalled;
-} runpiped_signal_state;
-
-void runpiped_handler(int sig) {
-    
 }
 
 int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because c++ is required to make it thread-safe without writing infinite amounts of code
     int pipes[2*n - 2];
-    for(int i = 1; i < n; i++) {
-        int res = pipe2(pipes + 2 * i - 2, O_CLOEXEC);
-        if(!res) {
-            for(int j = 1; j < i; j++) {
+    for(size_t i = 1; i < n; i++) {
+        int res = pipe2(pipes + 2 * (i - 1), O_CLOEXEC);
+        if(res) {
+            for(int j = 1; j < i; j++) { // or I could have used C++ with RAII and other cool stuff, you know
                 close(pipes[j * 2 - 2]);
                 close(pipes[j * 2 - 1]);
             }
             return -1;
         }
     }
-    
-    struct sigaction old_chld;
-    struct sigaction old_int;
-    
-    struct sigaction new_chld;
-    struct sigaction new_int;
     
     pid_t pids[n];
     memset(pids, 0, n * sizeof(pid_t));
@@ -189,7 +178,7 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
     for(size_t i = 0; i < n; i++) {
         int pid = fork();
         if(pid < 0) {
-            // todo
+            goto out_of_while; // kill all we have remaining
         } else if(pid) {
             pids[i] = pid;
         } else {
@@ -197,7 +186,8 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
                 dup2(pipes[i * 2 - 2], STDIN_FILENO);
             if(i < n - 1)
                 dup2(pipes[i * 2 + 1], STDOUT_FILENO);
-            exit(exec(args[i]));
+            printf("EXEC FAILD LOL %d\n\n", exec(args[i]));
+            exit(-1);
         }
     }
     
@@ -207,17 +197,35 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
     }
     
     siginfo_t info;
+    int killed_procs = 0;
     while(1) {
-        sigwaitinfo(&mask, &info); // it's sigchld or sigint, because everything else is blocked
-        if(info.si_signo == SIGINT || info.si_signo == SIGCHLD && info.si_code == CLD_EXITED)
+        sigwaitinfo(&mask, &info); // wait for sigchld or sigint, they are blocked anyway
+        if(info.si_signo == SIGINT)
             break;
+        if(info.si_signo == SIGCHLD) {
+            int chld;
+            while((chld = waitpid(-1, 0, WNOHANG)) > 0) {
+                for(int i = 0; i < n; i++) {
+                    if(pids[i] == chld) {
+                        pids[i] = 0;
+                        break;
+                    }
+                }
+                killed_procs++;
+                if(killed_procs == n)
+                    goto out_of_while;
+            }
+        }
     }
+    out_of_while:
     
     for(int i = 0; i < n; i++) {
-        kill(pids[i], SIGKILL);
-        waitpid(pids[i], 0, 0); // collect info so no zombies remain
+        if(pids[i]) {
+            kill(pids[i], SIGKILL);
+            waitpid(pids[i], 0, 0); // collect info so no zombies remain
+        }
     }
     
-    sigprocmask(SIG_SETMASK, &orig_mask, 0);
+    sigprocmask(SIG_SETMASK, &orig_mask, 0); // restore original mask
     return 1;
 }
