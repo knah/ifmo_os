@@ -151,7 +151,31 @@ int exec(execargs_t *args) {
 }
 
 // Another crappy task definition rant:
-// 
+// So, crappy task definitions. Didn't read it until it
+// was too late to tell that it's crappy. Why is it crappy
+// this time? Because of ridiculous exit conditions for runpiped.
+// Wait for one process to die, then kill all of them?
+// Sounds like an amazing data race generator and horrible
+// software design. How is supposed sleep 0 | (any commands) work?
+// Should it fail? Sure it doesn't fail in bash. And in any other
+// sensible shell too.
+// But that's not all. How are we even supposed to track pipe state?
+// I have no idea if pipe is closed or open by other process, and
+// I have not a single clue on how to track it's state. Sure, probably
+// I could inject wrapper into child processes that intercepts
+// calls to close() and sends signals to parent, but... It's a bit
+// too much for relatively simple homework. Additionally, bash doesn't
+// do that either. Commands stop executing because THEY see eof or
+// closed write end of pipe, whatever it does. And programs close
+// stdin and stdout if they don't need them. That's why commands like
+// find /home | grep \.c | head finish running as soon as 10 elements
+// are outputted. It's because head exits, closing it's end of pipe.
+// Grep exits because it has nowhere to write results.
+// And find exits because of the same reason. NOT because shell detects
+// closed pipe and kills them.
+// -----
+// TLDR: do your research before writing absurd tasks. Or better,
+// complete your tasks yourself before giving it to others.
 int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because c++ is required to make it thread-safe without writing infinite amounts of code
     int pipes[2*n - 2];
     for(size_t i = 1; i < n; i++) {

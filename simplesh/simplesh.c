@@ -48,11 +48,15 @@ int main(int argc, char* argv[]) {
         int earg_counter = 0;
         for(ssize_t i = 0; i <= res; i++) {
             if(buf[i] == 0) {
-                int arguments = 1;
+                int arguments = (buf[i - 1] != space);
+                ssize_t last_space = last_pos - 1;
                 for(ssize_t j = last_pos; j < i; j++) {
                     if(buf[j] == space) {
-                        arguments++;
+                        if(last_space != j - 1) {
+                            arguments++;
+                        }
                         buf[j] = 0;
+                        last_space = j;
                     }
                 }
                 char *proc_args[arguments + 1];
@@ -61,7 +65,9 @@ int main(int argc, char* argv[]) {
                 int arg_counter = 0;
                 for(ssize_t j = last_pos; j <= i; j++) {
                     if(buf[j] == 0) {
-                        proc_args[arg_counter++] = buf + arg_last_pos;
+                        if(arg_last_pos != j) {
+                            proc_args[arg_counter++] = buf + arg_last_pos;
+                        }
                         arg_last_pos = j + 1;
                     }
                 }
