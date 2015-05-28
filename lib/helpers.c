@@ -156,12 +156,12 @@ int exec(execargs_t *args) {
 // this time? Because of ridiculous exit conditions for runpiped.
 // Wait for one process to die, then kill all of them?
 // Sounds like an amazing data race generator and horrible
-// software design. How is supposed sleep 0 | (any commands) work?
+// software design. How is sleep 0 | (any commands) supposed to work?
 // Should it fail? Sure it doesn't fail in bash. And in any other
 // sensible shell too.
 // But that's not all. How are we even supposed to track pipe state?
-// I have no idea if pipe is closed or open by other process, and
-// I have not a single clue on how to track it's state. Sure, probably
+// I have no idea if pipe is closed or open by other process, and I
+// have not a single clue on how to track it's state. Sure, probably
 // I could inject wrapper into child processes that intercepts
 // calls to close() and sends signals to parent, but... It's a bit
 // too much for relatively simple homework. Additionally, bash doesn't
@@ -176,6 +176,7 @@ int exec(execargs_t *args) {
 // -----
 // TLDR: do your research before writing absurd tasks. Or better,
 // complete your tasks yourself before giving it to others.
+// PS: I did ltrace on bash. No pipe-watching or kills in there.
 int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because c++ is required to make it thread-safe without writing infinite amounts of code
     int pipes[2*n - 2];
     for(size_t i = 1; i < n; i++) {
@@ -185,7 +186,7 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
                 close(pipes[j * 2 - 2]);
                 close(pipes[j * 2 - 1]);
             }
-            return -2;
+            return -1;
         }
     }
     
@@ -270,7 +271,7 @@ int runpiped(execargs_t **args, size_t n) { // totally not thread-safe, because 
     
     for(int i = 0; i < n; i++) {
         if(pids[i]) {
-            kill(pids[i], SIGKILL);
+            kill(pids[i], SIGKILL); // just to make sure it's dead
             waitpid(pids[i], 0, 0); // collect info so no zombies remain
         }
     }
