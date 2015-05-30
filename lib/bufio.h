@@ -1,15 +1,15 @@
 #ifndef BUFIO_H
 #define BUFIO_H
 
-#include <unistd.h>
+#include <sys/types.h>
 
 typedef struct buf_t {
     size_t size;
     size_t capacity;
 } buf_t;
 
-struct buf_t *buf_new(size_t capacity);
-void buf_free(struct buf_t *);
+buf_t *buf_new(size_t capacity);
+void buf_free(buf_t *);
 size_t buf_capacity(buf_t *);
 size_t buf_size(buf_t *);
 
