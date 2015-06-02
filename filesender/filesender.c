@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
 				return 2;
 			}
 			while(1) {
-				int bfr = buf_fill(file, buf, buf_capacity(buf));
+				int bfr = buf_fill(file, buf, 1);
 				if(bfr < 0) {
 					if(buf_flush(cli, buf, buf_size(buf)) < 0)
 						return 3;

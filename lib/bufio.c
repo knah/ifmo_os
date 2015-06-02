@@ -1,6 +1,7 @@
 #include "bufio.h"
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #ifdef DEBUG
 #define DEBUG_ASSERT(cond) if(!(cond)) abort();
