@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
 	fds[0].events = POLLIN;
 	
 	while(1) {
-		int res = poll(fds, clients + 2, -1);
+		int res = poll(fds, (clients & ~1) + 2, -1);
 		if(res == -1) {
 			if(errno == EINTR)
 				continue;
