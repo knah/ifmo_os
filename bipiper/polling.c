@@ -11,6 +11,7 @@
 #include <string.h>
 #include <poll.h>
 #include <errno.h>
+#include <signal.h>
 
 #define BUFFER_SIZE 4096
 #define LISTEN_QUEUE 5
@@ -60,11 +61,12 @@ int main(int argc, char** argv) {
 	close(STDIN_FILENO);
 	close(STDOUT_FILENO);
 	close(STDERR_FILENO); // totally don't need these three
+	signal(SIGPIPE, SIG_IGN);
 	struct addrinfo *localhost1, *localhost2;
-	if(getaddrinfo("localhost", argv[1], 0, &localhost1)) {
+	if(getaddrinfo("0.0.0.0", argv[1], 0, &localhost1)) {
 		return 2;
 	}
-	if(getaddrinfo("localhost", argv[2], 0, &localhost2)) {
+	if(getaddrinfo("0.0.0.0", argv[2], 0, &localhost2)) {
 		return 3;
 	}
 	
@@ -89,6 +91,8 @@ int main(int argc, char** argv) {
 	
 	fds[0].events = POLLIN;
 	
+	int cli_bs = -1;
+	
 	while(1) {
 		int res = poll(fds, (clients & ~1) + 2, -1);
 		if(res == -1) {
@@ -105,10 +109,17 @@ int main(int argc, char** argv) {
 				if(cli < 0) {
 					return 11;
 				}
-				bufs[clients] = buf_new(BUFFER_SIZE);
-				fds[clients + 2].events = POLLIN | POLLRDHUP;
-				fds[clients + 2].fd = cli;
-				clients++;
+				if(want_accept) {
+					bufs[clients] = buf_new(BUFFER_SIZE);
+					bufs[clients + 1] = buf_new(BUFFER_SIZE);
+					fds[clients + 2].events = fds[clients + 3].events = POLLIN | POLLRDHUP;
+					fds[clients + 2].fd = cli_bs;
+					fds[clients + 3].fd = cli;
+					cli_bs = -1;
+					clients += 2;
+				} else {
+					cli_bs = cli;
+				}
 				want_accept ^= 1;
 				if(clients < 254) {
 					fds[want_accept].events = POLLIN;
@@ -123,7 +134,11 @@ int main(int argc, char** argv) {
 			if(ce) {
 				if(ce & POLLOUT) {
 					size_t oldsize = buf_size(bufs[i ^ 1]);
-					buf_flush(fds[i + 2].fd, bufs[i ^ 1], 1);
+					if(buf_flush(fds[i + 2].fd, bufs[i ^ 1], 1) < 0) {
+						close_pair(i);
+						i = (i & ~1) - 2;
+						continue;
+					}
 					if(buf_size(bufs[i ^ 1]) == 0) {
 						fds[i + 2].events &= ~POLLOUT;
 					}
@@ -133,7 +148,11 @@ int main(int argc, char** argv) {
 				}
 				if(ce & POLLIN) {
 					size_t oldsize = buf_size(bufs[i]);
-					buf_fill(fds[i + 2].fd, bufs[i], buf_size(bufs[i]) + 1);
+					if(buf_fill(fds[i + 2].fd, bufs[i], buf_size(bufs[i]) + 1) < 0) {
+						close_pair(i);
+						i = (i & ~1) - 2;
+						continue;
+					}
 					if(buf_size(bufs[i]) == buf_capacity(bufs[i])) {
 						fds[i + 2].events &= ~POLLIN;
 					}
@@ -144,18 +163,18 @@ int main(int argc, char** argv) {
 				if(ce & POLLRDHUP) {
 					shutdown(fds[(i + 2) ^ 1].fd, SHUT_WR);
 					fds[(i + 2) ^ 1].events &= ~POLLOUT;
-					if(~fds[i + 2].events & ~fds[(i + 2) ^ 1].events) {
+					if((fds[i + 2].events & (POLLIN | POLLOUT)) == 0 && (fds[(i + 2) ^ 1].events & (POLLIN | POLLOUT)) == 0) {
 						close_pair(i);
-						i |= 1;
+						i  = (i & ~1) - 2;
 						continue;
 					}
 				}
 				if(ce & POLLHUP) {
 					shutdown(fds[(i + 2) ^ 1].fd, SHUT_RD);
 					fds[(i + 2) ^ 1].events &= ~POLLIN;
-					if(~fds[i + 2].events & ~fds[(i + 2) ^ 1].events) {
+					if((fds[i + 2].events & (POLLIN | POLLOUT)) == 0 && (fds[(i + 2) ^ 1].events & (POLLIN | POLLOUT)) == 0) {
 						close_pair(i);
-						i |= 1;
+						i = (i & ~1) - 2;
 						continue;
 					}
 				}

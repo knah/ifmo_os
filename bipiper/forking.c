@@ -56,10 +56,10 @@ int main(int argc, char** argv) {
 	close(STDERR_FILENO); // totally don't need these three
 	signal(SIGCHLD, SIG_IGN); // auto-collect all zombies (allowed since POSIX.1-2001)
 	struct addrinfo *localhost1, *localhost2;
-	if(getaddrinfo("localhost", argv[1], 0, &localhost1)) {
+	if(getaddrinfo("0.0.0.0", argv[1], 0, &localhost1)) {
 		return 2;
 	}
-	if(getaddrinfo("localhost", argv[2], 0, &localhost2)) {
+	if(getaddrinfo("0.0.0.0", argv[2], 0, &localhost2)) {
 		return 3;
 	}
 	

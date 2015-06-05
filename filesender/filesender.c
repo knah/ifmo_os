@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
 	struct addrinfo *localhost;
 	struct addrinfo hints;
 	memset(&hints, 0, sizeof(struct addrinfo));
-	if(getaddrinfo("localhost", argv[1], 0, &localhost)) {
+	if(getaddrinfo("0.0.0.0", argv[1], 0, &localhost)) {
 		return 1;
 	}
 	int sock = socket(localhost->ai_family, SOCK_STREAM, 0);
