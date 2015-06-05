@@ -25,8 +25,10 @@ void pump_main(int cli1, int cli2) {
 				exit(3);
 			exit(4);
 		}
-		if(bfr == 0)
+		if(bfr == 0) {
+			shutdown(cli2, SHUT_WR);
 			return;
+		}
 		if(buf_flush(cli2, buf, buf_size(buf)) < 0)
 			exit(5);
 	}
